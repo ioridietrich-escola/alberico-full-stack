@@ -4,57 +4,100 @@ import './App.css';
 export function App() {
   const [cartasAliadas, setCartasAliadas] = useState([]);
   const [cartasInimigas, setCartasInimigas] = useState([]);
+  
+  const [tabuleiro, setTabuleiro] = useState(Array(9).fill(null));
+  
+  const [cartaArrastadaId, setCartaArrastadaId] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:3000/api/cartas')
-      .then((resposta) => resposta.json())
+      .then((res) => res.json())
       .then((dados) => {
         setCartasAliadas(dados.aliadas);
         setCartasInimigas(dados.inimigas);
       })
-      .catch((erro) => console.error("Erro ao buscar as cartas:", erro));
+      .catch((err) => console.error("Erro ao carregar as cartas:", err));
   }, []);
+
+  const tratarDragStart = (e, carta) => {
+    e.dataTransfer.setData('cartaDados', JSON.stringify(carta));
+    setCartaArrastadaId(carta.id);
+  };
+
+  const tratarDragEnd = () => {
+    setCartaArrastadaId(null);
+  };
+
+  const tratarDragOver = (e) => {
+    e.preventDefault();
+  };
+
+  const tratarDrop = (e, indexSlot) => {
+    e.preventDefault();
+    setCartaArrastadaId(null);
+
+    if (tabuleiro[indexSlot] !== null) return;
+
+    const dadosString = e.dataTransfer.getData('cartaDados');
+    if (!dadosString) return;
+
+    const carta = JSON.parse(dadosString);
+
+    const novoTabuleiro = [...tabuleiro];
+    novoTabuleiro[indexSlot] = carta;
+    setTabuleiro(novoTabuleiro);
+
+    setCartasAliadas((prev) => prev.filter((c) => c.id !== carta.id));
+  };
 
   return (
     <div>
-      <h1>Arena Faunadex</h1>
+      <h1>⚔️ Arena Faunadex - Duelo de Cartas ⚔️</h1>
 
-      {/* Estrutura da Arena */}
       <div className="arena">
-        
-        {/* Coluna Esquerda */}
+        {/* Mão Aliada */}
         <div className="mao-aliado">
           <h3>Aliados</h3>
           {cartasAliadas.map((carta) => (
-            <div className="carta" key={carta.id}>
-              {carta.nome}
+            <div
+              key={carta.id}
+              className={`carta ${cartaArrastadaId === carta.id ? 'arrastando' : ''}`}
+              draggable={true}
+              onDragStart={(e) => tratarDragStart(e, carta)}
+              onDragEnd={tratarDragEnd}
+            >
+              <img src={carta.img} alt={carta.nome} className="imagem-card" />
             </div>
           ))}
         </div>
 
-        {/* Centro */}
+        {/* Tabuleiro Matriz */}
         <div className="tabuleiro">
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
-          <div className="slot"></div>
+          {tabuleiro.map((slotCarta, index) => (
+            <div
+              key={index}
+              className="slot"
+              onDragOver={tratarDragOver}
+              onDrop={(e) => tratarDrop(e, index)}
+            >
+              {slotCarta && (
+                <div className="carta" draggable={false}>
+                  <img src={slotCarta.img} alt={slotCarta.nome} className="imagem-card" />
+                </div>
+              )}
+            </div>
+          ))}
         </div>
 
-        {/* Coluna Direita */}
+        {/* Mão Inimiga */}
         <div className="mao-inimigo">
           <h3>Inimigos</h3>
           {cartasInimigas.map((carta) => (
-            <div className="carta inimigo" key={carta.id}>
-              {carta.nome}
+            <div key={carta.id} className="carta inimigo">
+              <img src={carta.img} alt={carta.nome} className="imagem-card" />
             </div>
           ))}
         </div>
-
       </div>
     </div>
   );
